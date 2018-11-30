@@ -116,6 +116,10 @@ public class Prospector : MonoBehaviour
             // CardProspectors in the tableau have the state CardState.tableau
             cp.state = eCardState.tableau;
 
+            // CardProspectors in the tableau have the state CardState.tableau
+            cp.SetSortingLayerName(tSD.layerName);
+            // Set the sorting layers
+
             tableau.Add(cp);
             // Add this CardProspector to the List<> tableau    
         }
