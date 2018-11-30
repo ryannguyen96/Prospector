@@ -17,6 +17,11 @@ public class Prospector : MonoBehaviour
     public float yOffset = -2.5f;
     public Vector3 layoutCenter;
 
+    public Vector2 fsPosMid = new Vector2(0.5f, 0.90f);
+    public Vector2 fsPosRun = new Vector2(0.5f, 0.75f);
+    public Vector2 fsPosMid2 = new Vector2(0.4f, 1.0f);
+    public Vector2 fsPosEnd = new Vector2(0.5f, 0.95f);
+
 
     [Header("Set Dynamically")]
     public Deck deck;
@@ -26,6 +31,7 @@ public class Prospector : MonoBehaviour
     public CardProspector target;
     public List<CardProspector> tableau;
     public List<CardProspector> discardPile;
+    public FloatingScore fsRun;
 
     void Awake()
     {
@@ -34,6 +40,7 @@ public class Prospector : MonoBehaviour
 
     void Start()
     {
+        Scoreboard.S.score = ScoreManager.SCORE;
         deck = GetComponent<Deck>();
         deck.InitDeck(deckXML.text);
         Deck.Shuffle(ref deck.cards);
@@ -250,6 +257,7 @@ public class Prospector : MonoBehaviour
                 // Moves the next drawn card to the target
                 UpdateDrawPile();     // Restacks the drawPile
                 ScoreManager.EVENT(eScoreEvent.draw);
+                FloatingScoreHandler(eScoreEvent.draw);
                 break;
             case eCardState.tableau:
                 // Clicking a card in the tableau will check if it's a valid play
@@ -273,6 +281,7 @@ public class Prospector : MonoBehaviour
                 SetTableauFaces();
                 // Update tableau card face-ups
                 ScoreManager.EVENT(eScoreEvent.mine);
+                FloatingScoreHandler(eScoreEvent.mine);
                 break;
         }
 
@@ -320,11 +329,13 @@ public class Prospector : MonoBehaviour
         {
             //print("Game Over. You won! :)");
             ScoreManager.EVENT(eScoreEvent.gameWin);
+            FloatingScoreHandler(eScoreEvent.gameWin);
         }
         else
         {
             //print("Game Over. You Lost. :(");
             ScoreManager.EVENT(eScoreEvent.gameLoss);
+            FloatingScoreHandler(eScoreEvent.gameLoss);
         }
         // Reload the scene, resetting the game
         SceneManager.LoadScene("__Prospector_Scene_0");
@@ -349,6 +360,58 @@ public class Prospector : MonoBehaviour
             return (true);
         // Otherwise, return false
         return (false);
+    }
+
+    // Handle FloatingScore movement
+    void FloatingScoreHandler(eScoreEvent evt)
+    {
+        List<Vector2> fsPts;
+        switch(evt)
+        {
+            // Same things need to happen whether it's a draw, a win, or a loss
+            case eScoreEvent.draw:     // Drawing a card
+            case eScoreEvent.gameWin:  // Won the round
+            case eScoreEvent.gameLoss: // Lost the round
+                                       // Add fsRun to the Scoreboard score
+                if(fsRun != null)
+                {
+                    // Create points for the Bézier curve1
+                    fsPts = new List<Vector2>();
+                    fsPts.Add(fsPosRun);
+                    fsPts.Add(fsPosMid2);
+                    fsPts.Add(fsPosEnd);
+                    fsRun.reportFinishTo = Scoreboard.S.gameObject;
+                    fsRun.Init(fsPts, 0, 1);
+                    // Also adjust the fontSize
+                    fsRun.fontSizes = new List<float>(new float[]{28,36,4});
+                    fsRun = null;
+                    // Clear fsRun so it's created again
+                }
+                break;
+            case eScoreEvent.mine: // Remove a mine card
+                                   // Create a FloatingScore for this score
+                FloatingScore fs;
+                // Move it from the mousePosition to fsPosRun
+                Vector2 p0 = Input.mousePosition;
+                p0.x /= Screen.width;
+                p0.y /= Screen.height;
+                fsPts = new List<Vector2>();
+                fsPts.Add(p0);
+                fsPts.Add(fsPosMid);
+                fsPts.Add(fsPosRun);
+                fs = Scoreboard.S.CreateFloatingScore(ScoreManager.CHAIN, fsPts);
+                fs.fontSizes = new List<float>(new float[]{4,50,28});
+                if(fsRun == null)
+                {
+                    fsRun = fs;
+                    fsRun.reportFinishTo = null;
+                }
+                else
+                {
+                    fs.reportFinishTo = fsRun.gameObject;
+                }
+                break;
+        }
     }
 
 }
